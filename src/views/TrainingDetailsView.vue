@@ -32,72 +32,117 @@
 </template>
 
 <script>
+import { computed, onBeforeMount, ref } from "vue";
+import { useStore } from "vuex";
 import BaseInput from "../components/BaseInput.vue";
 import AddTrainingTopic from "../components/AddTrainingTopic.vue";
 import { getDoc, doc, collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase.js";
+import useSearch from "../hooks/search.js";
 export default {
   components: { BaseInput, AddTrainingTopic },
   props: ["id"],
-  data() {
-    return {
-      training: {},
-      topics: [],
-      searchTerm: "",
-      activeSearchTerm: "",
-    };
-  },
-  computed: {
-    user: function () {
-      return this.$store.state.user.userCred;
-    },
-    isTrainer: function () {
-      if (!this.user) return false;
-      return this.training.trainer === this.user.uid;
-    },
-    availableTopics() {
-      let filteredTopics = [];
-      if (this.activeSearchTerm) {
-        filteredTopics = this.topics.filter((topic) =>
-          topic.name
-            .toLocaleLowerCase()
-            .includes(this.activeSearchTerm.toLocaleLowerCase())
-        );
-      } else if (this.topics) {
-        filteredTopics = this.topics;
-      }
-      return filteredTopics;
-    },
-  },
-  watch: {
-    searchTerm(val) {
-      setTimeout(() => {
-        if (val === this.searchTerm) {
-          this.activeSearchTerm = val;
-        }
-      }, 300);
-    },
-  },
-  methods: {
-    updateSearch(val) {
-      console.log(val);
-      this.searchTerm = val;
-    },
-  },
-  async beforeMount() {
-    const trainingSnap = await getDoc(doc(db, "trainings", this.id));
-    this.training = trainingSnap.data();
+  // data() {
+  //   return {
+  //     training: {},
+  //     topics: [],
+  //     searchTerm: "",
+  //     activeSearchTerm: "",
+  //   };
+  // },
+  // computed: {
+  //   user: function () {
+  //     return this.$store.state.user.userCred;
+  //   },
+  //   isTrainer: function () {
+  //     if (!this.user) return false;
+  //     return this.training.trainer === this.user.uid;
+  //   },
+  //   availableTopics() {
+  //     let filteredTopics = [];
+  //     if (this.activeSearchTerm) {
+  //       filteredTopics = this.topics.filter((topic) =>
+  //         topic.name
+  //           .toLocaleLowerCase()
+  //           .includes(this.activeSearchTerm.toLocaleLowerCase())
+  //       );
+  //     } else if (this.topics) {
+  //       filteredTopics = this.topics;
+  //     }
+  //     return filteredTopics;
+  //   },
+  // },
+  // watch: {
+  //   searchTerm(val) {
+  //     setTimeout(() => {
+  //       if (val === this.searchTerm) {
+  //         this.activeSearchTerm = val;
+  //       }
+  //     }, 300);
+  //   },
+  // },
+  // methods: {
+  //   updateSearch(val) {
+  //     console.log(val);
+  //     this.searchTerm = val;
+  //   },
+  // },
+  // async beforeMount() {
+  //   const trainingSnap = await getDoc(doc(db, "trainings", this.id));
+  //   this.training = trainingSnap.data();
 
-    const collectionRef = collection(
-      doc(collection(db, "trainings"), this.id),
-      "topics"
-    );
-    const topicSnapshot = await getDocs(collectionRef);
-    const topicsData = [];
-    topicSnapshot.forEach((snap) => {
-      topicsData.push({ ...snap.data(), id: snap.id });
+  //   const collectionRef = collection(
+  //     doc(collection(db, "trainings"), this.id),
+  //     "topics"
+  //   );
+  //   const topicSnapshot = await getDocs(collectionRef);
+  //   const topicsData = [];
+  //   topicSnapshot.forEach((snap) => {
+  //     topicsData.push({ ...snap.data(), id: snap.id });
+  //   });
+  //   this.topics = topicsData;
+  // },
+  setup(props) {
+    const training = ref({});
+    const topics = ref([]);
+
+    const store = useStore();
+
+    const user = computed(() => store.state.user.userCred);
+    const isTrainer = computed(() => {
+      if (!user.value) return false;
+      return training.value.trainer === user.value.uid;
     });
-    this.topics = topicsData;
+
+    onBeforeMount(async () => {
+      const trainingSnap = await getDoc(doc(db, "trainings", props.id));
+      training.value = trainingSnap.data();
+
+      const collectionRef = collection(
+        doc(collection(db, "trainings"), props.id),
+        "topics"
+      );
+      const topicSnapshot = await getDocs(collectionRef);
+      const topicsData = [];
+      topicSnapshot.forEach((snap) => {
+        topicsData.push({ ...snap.data(), id: snap.id });
+      });
+      topics.value = topicsData;
+    });
+
+    const {
+      searchTerm,
+      updateSearch,
+      availableItems: availableTopics,
+    } = useSearch(topics, "name");
+
+    return {
+      training,
+      searchTerm,
+      updateSearch,
+      availableTopics,
+      isTrainer,
+    };
   },
 };
 </script>

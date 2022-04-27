@@ -23,12 +23,13 @@
 </template>
 
 <script>
-import { ref, defineComponent, computed, watch, onMounted } from "vue";
+import { ref, defineComponent, onMounted } from "vue";
 import TrainingComponent from "../components/TrainingCard.vue";
 import BaseInput from "../components/BaseInput.vue";
 import { getDocs, collection } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { useStore } from "vuex";
+import useSearch from "../hooks/search.js";
 // Components
 
 export default defineComponent({
@@ -115,34 +116,11 @@ export default defineComponent({
       }
     };
 
-    const searchTerm = ref("");
-    const activeSearchTerm = ref("");
-    const updateSearch = (val) => {
-      console.log(val);
-      searchTerm.value = val;
-    };
-
-    const availableTrainings = computed(() => {
-      let filteredTrainings = [];
-      if (activeSearchTerm.value) {
-        filteredTrainings = trainings.value.filter((tr) =>
-          tr.title
-            .toLocaleLowerCase()
-            .includes(activeSearchTerm.value.toLocaleLowerCase())
-        );
-      } else if (trainings.value) {
-        filteredTrainings = trainings.value;
-      }
-      return filteredTrainings;
-    });
-
-    watch(searchTerm, (val) => {
-      setTimeout(() => {
-        if (val === searchTerm.value) {
-          activeSearchTerm.value = val;
-        }
-      }, 300);
-    });
+    const {
+      searchTerm,
+      updateSearch,
+      availableItems: availableTrainings,
+    } = useSearch(trainings, "title");
 
     onMounted(() => {
       fetchTrainings();
